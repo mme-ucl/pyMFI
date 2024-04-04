@@ -212,6 +212,7 @@ def find_lw_force(lw_centre, lw_kappa, grid, min_grid, max_grid, grid_space, per
 
     return F_harmonic
 
+
 @njit
 def find_uw_force(uw_centre, uw_kappa, grid, min_grid, max_grid, grid_space, periodic):
     """Find upper half of 1D harmonic potential force equivalent to f = 2 * uw_kappa * (grid - uw_centre) for grid > uw_centre and f = 0 otherwise. This can change for periodic cases.
@@ -242,6 +243,7 @@ def find_uw_force(uw_centre, uw_kappa, grid, min_grid, max_grid, grid_space, per
             F_harmonic[:index_period] = 2 * uw_kappa * (grid[:index_period] - uw_centre + grid_length)
     
     return F_harmonic
+
 
 @njit
 def intg_1D(Force, dx):
@@ -303,6 +305,7 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
 
     Returns:
         tuple: grid, Ftot_den, Ftot_den2, Ftot, ofv_num, FES, ofv, ofe, cutoff, error_evol, fes_error_cutoff_evol\n
+        
         grid (array of size (nbins,)): CV-array.\n
         Ftot_den (array of size (nbins,)): Cumulative biased probability density.\n
         Ftot_den2 (array of size (nbins,): Cumulative (biased probability density squared). Used for error calculation.\n
@@ -354,7 +357,6 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
     if lw_kappa > 0: F_static += find_lw_force(lw_centre, lw_kappa, grid, min_grid, max_grid, grid_space, periodic)
     if uw_kappa > 0: F_static += find_uw_force(uw_centre, uw_kappa, grid, min_grid, max_grid, grid_space, periodic)
 
-
     # Definition Gamma Factor, allows to switch between WT and regular MetaD
     if WellTempered < 1: Gamma_Factor = 1
     else: Gamma_Factor = (HILLS[0, 4] - 1) / (HILLS[0, 4])
@@ -384,7 +386,6 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
         Ftot_den2 += np.square(pb_t) 
         ofv_num += np.multiply(pb_t, np.square(dfds))  
   
-
         # Calculate error
         if (i + 1) % error_pace == 0 or (i+1) == total_number_of_hills:
             
@@ -394,7 +395,7 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
             if FES_cutoff > 0: cutoff = np.where(FES < FES_cutoff, 1.0, 0)
             if Ftot_den_cutoff > 0: cutoff = np.where(Ftot_den > Ftot_den_cutoff, 1.0, 0)
             
-                
+            
             # calculate error
             ofv = np.where(Ftot_den > Ftot_den_limit, ofv_num / Ftot_den, 0) - np.square(Ftot)
             Ftot_den_sq = np.square(Ftot_den)
@@ -405,20 +406,22 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
             if non_exploration_penalty > 0: ofv = np.where(cutoff > 0.5, ofv, non_exploration_penalty**2) 
             ofe = np.where(ofv > 0, np.sqrt(ofv), 0)  
 
+            print('I am here')
+            
             #save global error evolution
-            error_evol[0,error_count] = sum(ofv) / np.count_nonzero(ofv)
-            error_evol[1,error_count] = sum(ofe) / np.count_nonzero(ofe)
+            if np.count_nonzero(ofv)>0: error_evol[0,error_count] = np.sum(ofv) / np.count_nonzero(ofv)
+            if np.count_nonzero(ofe)>0: error_evol[1,error_count] = np.sum(ofe) / np.count_nonzero(ofe)
             error_evol[2,error_count] = np.count_nonzero(cutoff) / nbins
             error_evol[3,error_count] = HILLS[i,0]
  
             # print(np.shape(FES), np.shape())
             
             # save local fes, error and cutoff
-            if save_intermediate_fes_error_cutoff == True:
-                fes_error_cutoff_evol[0,error_count] = FES
-                fes_error_cutoff_evol[1,error_count] = ofv
-                fes_error_cutoff_evol[2,error_count] = np.where(ofv != 0, np.sqrt(ofv), 0) 
-                fes_error_cutoff_evol[3,error_count] = cutoff
+            #if save_intermediate_fes_error_cutoff == True:
+            #    fes_error_cutoff_evol[0,error_count] = FES
+            #    fes_error_cutoff_evol[1,error_count] = ofv
+            #    fes_error_cutoff_evol[2,error_count] = np.where(ofv != 0, np.sqrt(ofv), 0) 
+            #    fes_error_cutoff_evol[3,error_count] = cutoff
             
             error_count += 1
             
