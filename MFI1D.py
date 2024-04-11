@@ -954,3 +954,61 @@ def print_progress(iteration, total, bar_length=50, variable_name='progress vari
     arrow = '*' * int(round(bar_length * progress))
     spaces = ' ' * (bar_length - len(arrow))
     print(f'\r|{arrow}{spaces}| {int(progress * 100)}% | {variable_name}: {variable}', end='', flush=True)
+
+def coft(HILLS="HILLS",FES="FES",kT=1,WellTempered=-1,total_number_of_hills=100,stride=10,
+            min_grid=-np.pi, max_grid=np.pi, nbins=200):
+    """Compute a time-independent estimate of the Mean Thermodynamic Force, i.e. the free energy gradient in 2D CV spaces.
+
+    Args:
+        HILLS (array): HILLS array. Defaults to "HILLS".
+        FES (array of size (nbins[0], nbins[1]))
+        kT (float, optional): Boltzmann constant multiplied with temperature (reduced format, 120K -> 1).
+        WellTempered (binary, optional): Is the simulation well tempered? 1 or yes and 0 for no. Defaults to 1.
+        total_number_of_hills (int, optional): Number of HILLS to analyse. Defaults to 100.
+        min_grid (array, optional): Lower bound of the force domain. Defaults to np.array((-np.pi, -np.pi)).
+        max_grid (array, optional): Upper bound of the force domain. Defaults to np.array((np.pi, np.pi)).
+        nbins (array, optional): number of bins in CV1,CV2. Defaults to np.array((200,200)).
+  
+    Returns:
+        list : [c,Bias]\n
+        c (array of size (total_numer_of_hills,)): Ensemble average of the bias in the unperturbed ensemble, calculated after the deposition of each metadynamics hill.\n
+        Bias (array of size (nbins[0], nbins[1])): Metadynamics Bias reconstructed from HILLS data.
+    """
+
+    gridx = np.linspace(min_grid, max_grid, nbins)
+    
+    grid_space = (max_grid - min_grid) / (nbins-1)
+    X = gridx
+
+    # Initialize force terms
+    Bias = np.zeros(nbins)
+
+    # Definition Gamma Factor, allows to switch between WT and regular MetaD
+    if WellTempered < 1:
+        Gamma_Factor = 1
+    else:
+        gamma = HILLS[0, 6]
+        Gamma_Factor = (gamma - 1) / (gamma)
+        
+    for i in range(total_number_of_hills):
+        
+        # Build metadynamics potential
+        s_x = HILLS[i, 1]  # centre x-position of Gaussian
+
+        sigma_meta2_x = HILLS[i, 2] ** 2  # width of Gaussian
+
+        height_meta = HILLS[i, 3] * Gamma_Factor  # Height of Gaussian
+        
+        kernelmeta_x = np.exp( - np.square(gridx - s_x) / (2 * sigma_meta2_x)) * height_meta
+
+        Bias += kernelmeta_x
+        
+        if i==0: 
+            for k in range(stride):
+                c=np.sum(np.exp(-FES/kT))/np.sum(np.exp(-Bias/kT)*np.exp(-FES/kT))
+            print_progress(i, total_number_of_hills,variable_name='exp(c(t)/kT)',variable=c)
+        else: 
+            for k in range(stride):
+                c=np.append(c,np.sum(np.exp(-FES/kT))/np.sum(np.exp(-Bias/kT)*np.exp(-FES/kT)))
+            print_progress(i, total_number_of_hills,variable_name='exp(c(t)/kT)',variable=c[-1])
+    return [c,Bias]
