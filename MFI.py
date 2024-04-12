@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 #from numba import njit
 import numpy as np
 import pickle
-import random
-from matplotlib import ticker
 import scipy.sparse as sps
 import scipy.sparse.linalg as spsl
 import os
@@ -412,10 +410,10 @@ def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((
 
     #create grid
     nbins_yx = np.shape(FX)
-    gridx = np.linspace(min_grid[0], max_grid[0], nbins_yx[1])
-    gridy = np.linspace(min_grid[1], max_grid[1], nbins_yx[0])
-    grid_spacex = (max_grid[0] - min_grid[0]) / (nbins_yx[1] - 1)
-    grid_spacey = (max_grid[1] - min_grid[1]) / (nbins_yx[0] - 1)	
+    gridx = np.linspace(min_grid[1], max_grid[1], nbins_yx[1])
+    gridy = np.linspace(min_grid[0], max_grid[0], nbins_yx[0])
+    grid_spacex = (max_grid[1] - min_grid[1]) / (nbins_yx[1] - 1)
+    grid_spacey = (max_grid[0] - min_grid[0]) / (nbins_yx[0] - 1)	
     X, Y = np.meshgrid(gridx, gridy)
 
     #If system is non-periodic, make (anti-)symmetic copies so that the system appears symmetric.
@@ -1253,8 +1251,6 @@ def MFI_2D(HILLS="HILLS", position_x="position_x", position_y="position_y", bw=n
     ofe_history = []
     aad_history = []
     time_history = []
-    ofeMAP = []
-    aadMAP = []
     if len(window_corners) == 4: ofe_history_window = []
 
     #Calculate static force
@@ -1346,7 +1342,7 @@ def MFI_2D(HILLS="HILLS", position_x="position_x", position_y="position_y", bw=n
             if Ftot_den_cutoff > 0 or hasattr(FES_cutoff, "__len__"): cutoff = get_cutoff(Ftot_den_tot, Ftot_den_cutoff=Ftot_den_cutoff, FX=Ftot_x_tot, FY=Ftot_y_tot, FES_cutoff=FES_cutoff)			
             if non_exploration_penalty > 0: ofe = np.where(cutoff > 0.5, ofe, non_exploration_penalty)
             else: ofe = np.where(cutoff > 0.5, ofe, 0) 
-            #ofeMAP.append(ofe)
+            
 
             #Calculate averaged global error
             absolute_explored_volume = np.count_nonzero(cutoff)
@@ -1365,7 +1361,7 @@ def MFI_2D(HILLS="HILLS", position_x="position_x", position_y="position_y", bw=n
                 AD=abs(ref_fes - FES) * cutoff
                 AAD = np.sum(AD)/(np.count_nonzero(cutoff))		
                 aad_history.append(AAD)
-                #aadMAP.append(AD)
+                
                 
             #print progress
             print_progress(i+1,total_number_of_hills,variable_name='Average Mean Force Error',variable=round(ofe_history[-1],3))        
@@ -1374,5 +1370,5 @@ def MFI_2D(HILLS="HILLS", position_x="position_x", position_y="position_y", bw=n
             
     if len(window_corners) == 4: return [X, Y, Ftot_den, Ftot_x, Ftot_y, ofv, ofe, cutoff, volume_history, ofe_history, ofe_history_window, time_history, Ftot_den2, ofv_num_x, ofv_num_y]
   
-    else: return [X, Y, Ftot_den, Ftot_x, Ftot_y, ofv, ofe, cutoff, volume_history, ofe_history, aad_history, time_history, Ftot_den2, ofv_num_x, ofv_num_y] #aadMAP, ofeMAP]
+    else: return [X, Y, Ftot_den, Ftot_x, Ftot_y, ofv, ofe, cutoff, volume_history, ofe_history, aad_history, time_history, Ftot_den2, ofv_num_x, ofv_num_y]
     
