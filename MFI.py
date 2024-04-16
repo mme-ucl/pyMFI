@@ -391,7 +391,7 @@ def get_cutoff_1D(Ftot_den=None, Ftot_den_cutoff=0.1, FES=None, FES_cutoff=23):
 
 
 ### Integration using Fast Fourier Transform (FFT integration) in 2D
-def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((np.pi, np.pi)), periodic=np.array((0,0))):
+def FFT_intg_2D(FX, FY, min_grid=[-np.pi, -np.pi], max_grid=[np.pi, np.pi], periodic=[0,0]):
     """2D integration of force gradient (FX, FY) to find FES using Fast Fourier Transform.
 
     Args:
@@ -408,7 +408,7 @@ def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((
         fes (array of size (nbins[1], nbins[0])): Free Energy Surface
     """
 
-    #create grid
+    #create grid consistent with force calculation
     nbins_yx = np.shape(FX)
     gridx = np.linspace(min_grid[0], max_grid[0], nbins_yx[1])
     gridy = np.linspace(min_grid[1], max_grid[1], nbins_yx[0])
@@ -427,7 +427,7 @@ def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((
         FY = np.block([[FY],[-FY[::-1,:]]])
 
     # Calculate frequency
-    freq_1dx = np.fft.fftfreq(nbins_yx[1], grid_spacex)  #This is the line that broke the X, Y 
+    freq_1dx = np.fft.fftfreq(nbins_yx[1], grid_spacex)  # Revised and checked for periodic/nonperiodic case. 
     freq_1dy = np.fft.fftfreq(nbins_yx[0], grid_spacey)  
     freq_x, freq_y = np.meshgrid(freq_1dx, freq_1dy)
     freq_hypot = np.hypot(freq_x, freq_y)
@@ -446,8 +446,8 @@ def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((
     if periodic[0] == 0: fes = fes[:,int(nbins_yx[1]/2):] 
     if periodic[1] == 0: fes = fes[:int(nbins_yx[0]/2),:]
 
+    # Rescale and 
     fes = fes - np.min(fes)
-
     return [X, Y, fes]
 
 
