@@ -410,10 +410,10 @@ def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((
 
     #create grid
     nbins_yx = np.shape(FX)
-    gridx = np.linspace(min_grid[1], max_grid[1], nbins_yx[1])
-    gridy = np.linspace(min_grid[0], max_grid[0], nbins_yx[0])
-    grid_spacex = (max_grid[1] - min_grid[1]) / (nbins_yx[1] - 1)
-    grid_spacey = (max_grid[0] - min_grid[0]) / (nbins_yx[0] - 1)	
+    gridx = np.linspace(min_grid[0], max_grid[0], nbins_yx[1])
+    gridy = np.linspace(min_grid[1], max_grid[1], nbins_yx[0])
+    grid_spacex = (max_grid[0] - min_grid[0]) / (nbins_yx[1] - 1)
+    grid_spacey = (max_grid[1] - min_grid[1]) / (nbins_yx[0] - 1)	
     X, Y = np.meshgrid(gridx, gridy)
 
     #If system is non-periodic, make (anti-)symmetic copies so that the system appears symmetric.
@@ -427,8 +427,8 @@ def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((
         FY = np.block([[FY],[-FY[::-1,:]]])
 
     # Calculate frequency
-    freq_1dx = np.fft.fftfreq(nbins_yx[1], grid_spacey)  #use nbins from x-dimension and grid_space from y-dimension
-    freq_1dy = np.fft.fftfreq(nbins_yx[0], grid_spacex)  #use nbins from x-dimension and grid_space from y-dimension
+    freq_1dx = np.fft.fftfreq(nbins_yx[1], grid_spacex)  #This is the line that broke the X, Y 
+    freq_1dy = np.fft.fftfreq(nbins_yx[0], grid_spacey)  
     freq_x, freq_y = np.meshgrid(freq_1dx, freq_1dy)
     freq_hypot = np.hypot(freq_x, freq_y)
     freq_sq = np.where(freq_hypot != 0, freq_hypot ** 2, 1E-10)
@@ -442,11 +442,12 @@ def FFT_intg_2D(FX, FY, min_grid=np.array((-np.pi, -np.pi)), max_grid=np.array((
     # Construct whole FES
     fes = fes_x + fes_y
     
-    #if non-periodic, cut FES back to original domain.
-    if periodic[0] == 0: fes = fes[:,int(nbins_yx[1]/2):]
+    #if non-periodic, cut FES back to original domain by selecting the lower right copy.
+    if periodic[0] == 0: fes = fes[:,int(nbins_yx[1]/2):] 
     if periodic[1] == 0: fes = fes[:int(nbins_yx[0]/2),:]
 
     fes = fes - np.min(fes)
+
     return [X, Y, fes]
 
 
