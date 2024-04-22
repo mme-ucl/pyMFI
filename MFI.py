@@ -624,8 +624,8 @@ def intgrad2(fx, fy, min_grid=np.array((-2, -2)), max_grid=np.array((2, 2)), per
 
     return [X, Y, fhat]
 
-def plot_recap_2D(X, Y, FES, TOTAL_DENSITY, CONVMAP, CONV_history, CONV_history_time, FES_lim=50, ofe_map_lim=50, FES_step=1, ofe_step=1):
-    """Plots 1. FES, 2. varinace_map, 3. Cumulative biased probability density, 4. Convergece of variance.
+def plot_recap_2D(X, Y, FES, TOTAL_DENSITY, CONVMAP, CONV_history, CONV_history_time, FES_lim=50, ofe_map_lim=50, FES_step=1, ofe_step=1, error_log_scale = 1, use_weighted_st_dev=True):
+    """Plots 1. FES, 2. varinace_map, 3. Cumulative biased probability density, 4. Convergence of the variance.
     
     Args:
         X (array of size (nbins[1], nbins[0])): CV1 grid positions
@@ -635,6 +635,7 @@ def plot_recap_2D(X, Y, FES, TOTAL_DENSITY, CONVMAP, CONV_history, CONV_history_
         CONVMAP (array of size (nbins[1], nbins[0])): varinace_map
         CONV_history (list): Convergece of variance
         CONV_history_time (list): Simulation time corresponding to CONV_history
+        error_log_scale (boolean, optional): Option to make error_conversion plot with a log scale. 1 for log scale. Defaults to 1.
 
     """
     fig, axs = plt.subplots(1, 4, figsize=(16, 3))
@@ -649,12 +650,11 @@ def plot_recap_2D(X, Y, FES, TOTAL_DENSITY, CONVMAP, CONV_history, CONV_history_
 
     cp = axs[1].contourf(X, Y, zero_to_nan(CONVMAP), levels=range(0, ofe_map_lim, ofe_step), cmap='coolwarm', antialiased=False, alpha=0.8);
     cbar = plt.colorbar(cp, ax=axs[1])
-    cbar.set_label("Standard Deviation [kJ/mol]", fontsize=11)
-    axs[1].set_ylabel('CV2', fontsize=11)
+    cbar.set_label("Standard Deviation [kJ/mol]", fontsize=11) if use_weighted_st_dev==True else cbar.set_label("Standard Error [kJ/mol]", fontsize=11)
     axs[1].set_xlabel('CV1', fontsize=11)
     axs[1].set_xlim(np.min(X),np.max(X))
     axs[1].set_ylim(np.min(Y),np.max(Y))
-    axs[1].set_title('Standard Deviation of the Mean Force', fontsize=11)
+    axs[1].set_title('Standard Deviation of the Mean Force', fontsize=11) if use_weighted_st_dev==True else axs[1].set_title('Standard Error of the Mean Force', fontsize=11)
 
     cp = axs[2].contourf(X, Y, (TOTAL_DENSITY), cmap='gray_r', antialiased=False, alpha=0.8);  #, locator=ticker.LogLocator()
     cbar = plt.colorbar(cp, ax=axs[2])
@@ -669,9 +669,9 @@ def plot_recap_2D(X, Y, FES, TOTAL_DENSITY, CONVMAP, CONV_history, CONV_history_
     axs[3].set_ylabel('Standard Deviation [kJ/mol]', fontsize=11)
     axs[3].set_xlabel('Simulation time', fontsize=11)
     axs[3].set_title('Global Convergence of Standard Deviation', fontsize=11)
- 
+    if error_log_scale == 1: axs[3].set_yscale('log')
+    
     plt.tight_layout()
-
 
 # Patch independent simulations
 def patch_2D(master_array):
