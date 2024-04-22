@@ -212,7 +212,6 @@ def find_lw_force(lw_centre, lw_kappa, grid, min_grid, max_grid, grid_space, per
 
     return F_harmonic
 
-
 @njit
 def find_uw_force(uw_centre, uw_kappa, grid, min_grid, max_grid, grid_space, periodic):
     """Find upper half of 1D harmonic potential force equivalent to f = 2 * uw_kappa * (grid - uw_centre) for grid > uw_centre and f = 0 otherwise. This can change for periodic cases.
@@ -244,7 +243,6 @@ def find_uw_force(uw_centre, uw_kappa, grid, min_grid, max_grid, grid_space, per
     
     return F_harmonic
 
-
 @njit
 def intg_1D(Force, dx):
     """Integration of 1D gradient using finite difference method (simpson's method).
@@ -269,7 +267,7 @@ def intg_1D(Force, dx):
 ### Algorithm to run 1D MFI
 # Run MFI algorithm with on the fly error calculation
 @njit
-def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_grid=2, nbins=201, 
+def MFI_1D(HILLS, position, bw=0.1, kT=1, min_grid=-2, max_grid=2, nbins=201, 
            log_pace=-1, error_pace=-1, WellTempered=1, nhills=-1, periodic=0, 
            hp_centre=0.0, hp_kappa=0, lw_centre=0.0, lw_kappa=0, uw_centre=0.0, uw_kappa=0, F_static = np.zeros(1), 
            Ftot_den_limit = 1E-10, FES_cutoff = 0, Ftot_den_cutoff = 0, non_exploration_penalty = 0, save_intermediate_fes_error_cutoff = False, use_weighted_st_dev = True):
@@ -277,7 +275,7 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
     """Compute a time-independent estimate of the Mean Thermodynamic Force, i.e. the free energy gradient in 1D CV spaces.
 
     Args:
-        HILLS (str): HILLS array. Defaults to "HILLS".
+        HILLS (array): HILLS array from HILLS file from metadynamics simulation using PLUMED. Contains number_of_hills * [time, position, metaD_width, metaD_height metaD_biasfactor].  
         position (str): CV/position array. Defaults to "position".
         bw (float, optional): bandwidth for the construction of the KDE estimate of the biased probability density. Defaults to 1.
         kT (float, optional): Boltzmann constant multiplied with temperature (reduced format, 120K -> 1).
@@ -305,7 +303,6 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
 
     Returns:
         tuple: grid, Ftot_den, Ftot_den2, Ftot, ofv_num, FES, ofv, ofe, cutoff, error_evol, fes_error_cutoff_evol\n
-        
         grid (array of size (nbins,)): CV-array.\n
         Ftot_den (array of size (nbins,)): Cumulative biased probability density.\n
         Ftot_den2 (array of size (nbins,): Cumulative (biased probability density squared). Used for error calculation.\n
@@ -357,6 +354,7 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
     if lw_kappa > 0: F_static += find_lw_force(lw_centre, lw_kappa, grid, min_grid, max_grid, grid_space, periodic)
     if uw_kappa > 0: F_static += find_uw_force(uw_centre, uw_kappa, grid, min_grid, max_grid, grid_space, periodic)
 
+
     # Definition Gamma Factor, allows to switch between WT and regular MetaD
     if WellTempered < 1: Gamma_Factor = 1
     else: Gamma_Factor = (HILLS[0, 4] - 1) / (HILLS[0, 4])
@@ -386,6 +384,7 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
         Ftot_den2 += np.square(pb_t) 
         ofv_num += np.multiply(pb_t, np.square(dfds))  
   
+
         # Calculate error
         if (i + 1) % error_pace == 0 or (i+1) == total_number_of_hills:
             
@@ -395,7 +394,7 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
             if FES_cutoff > 0: cutoff = np.where(FES < FES_cutoff, 1.0, 0)
             if Ftot_den_cutoff > 0: cutoff = np.where(Ftot_den > Ftot_den_cutoff, 1.0, 0)
             
-            
+                
             # calculate error
             ofv = np.where(Ftot_den > Ftot_den_limit, ofv_num / Ftot_den, 0) - np.square(Ftot)
             Ftot_den_sq = np.square(Ftot_den)
@@ -406,22 +405,20 @@ def MFI_1D(HILLS="HILLS", position="position", bw=0.1, kT=1, min_grid=-2, max_gr
             if non_exploration_penalty > 0: ofv = np.where(cutoff > 0.5, ofv, non_exploration_penalty**2) 
             ofe = np.where(ofv > 0, np.sqrt(ofv), 0)  
 
-            print('I am here')
-            
             #save global error evolution
-            if np.count_nonzero(ofv)>0: error_evol[0,error_count] = np.sum(ofv) / np.count_nonzero(ofv)
-            if np.count_nonzero(ofe)>0: error_evol[1,error_count] = np.sum(ofe) / np.count_nonzero(ofe)
+            error_evol[0,error_count] = sum(ofv) / np.count_nonzero(ofv)
+            error_evol[1,error_count] = sum(ofe) / np.count_nonzero(ofe)
             error_evol[2,error_count] = np.count_nonzero(cutoff) / nbins
             error_evol[3,error_count] = HILLS[i,0]
  
             # print(np.shape(FES), np.shape())
             
             # save local fes, error and cutoff
-            #if save_intermediate_fes_error_cutoff == True:
-            #    fes_error_cutoff_evol[0,error_count] = FES
-            #    fes_error_cutoff_evol[1,error_count] = ofv
-            #    fes_error_cutoff_evol[2,error_count] = np.where(ofv != 0, np.sqrt(ofv), 0) 
-            #    fes_error_cutoff_evol[3,error_count] = cutoff
+            if save_intermediate_fes_error_cutoff == True:
+                fes_error_cutoff_evol[0,error_count] = FES
+                fes_error_cutoff_evol[1,error_count] = ofv
+                fes_error_cutoff_evol[2,error_count] = np.where(ofv != 0, np.sqrt(ofv), 0) 
+                fes_error_cutoff_evol[3,error_count] = cutoff
             
             error_count += 1
             
@@ -844,10 +841,7 @@ def plot_recap(X, FES, Ftot_den, ofe, ofe_history, time_history, y_ref=None, FES
     fig, axs = plt.subplots(2, 2, figsize=(12, 8))
 
     #plot ref f
-    if hasattr(y_ref, "__len__") != True: y = 7*X**4 - 23*X**2
-    else: y = y_ref
-    y = y - min(y)  
-    axs[0, 0].plot(X, y, label="Reference", color="red", alpha=0.3);
+    if y_ref is not None: axs[0, 0].plot(X, y_ref, label="Reference", color="red", alpha=0.3);
     
     axs[0, 0].plot(X, FES, label="FES");
     axs[0, 0].set_ylim([0, FES_lim])
